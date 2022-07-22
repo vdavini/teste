@@ -1,0 +1,134 @@
+using System;
+using System.Data;
+using System.Globalization;
+using System.Threading;
+
+using AssetPortfolioManagerAddin;
+
+namespace Example
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Thread.CurrentThread.CurrentCulture = CultureInfo.CreateSpecificCulture("en-US");
+            Thread.CurrentThread.CurrentUICulture = new CultureInfo("en-US");
+
+            RiskAPI instance = RiskFactory.GetInstance();
+
+            string tradingDesk = "Asset Portfolio Manager";
+            DateTime refDate = new DateTime(2019, 07, 31);
+
+            // reports
+            DataTable overview = instance.LoadOverview(refDate, tradingDesk);
+            DataTable trades = instance.LoadTrades(refDate, tradingDesk);
+            DataTable stockEvents = instance.LoadCorporateEvents(refDate);
+            DataTable cashFlows = instance.LoadTradingDeskCashFlows(refDate, new DateTime(4000, 12, 31), tradingDesk);
+            DataTable plSummary = instance.LoadPositionPLSummary(refDate, tradingDesk, 10, "Main");
+            DataTable productsInfo = instance.LoadProductClassProductsInfo("currencies ndf", refDate, true);
+
+            // Overview By Primitive: 
+            DataTable overviewByPrimitive = instance.LoadOverviewByPrimitive(refDate, tradingDesk);
+
+            // Overview By Primitive And Dealer: 
+            DataTable overviewPrimitiveAndDealer = instance.LoadOverviewByPrimitiveAndDealer(refDate, tradingDesk);
+
+            // FX Forward Report: 
+            DataTable fxForwards = instance.LoadFXForwardReport(refDate, tradingDesk);
+
+            // Products Buckets Risk Report: 
+            DataTable productsBuckets = instance.LoadBooksProductsBucketsRiskReport(refDate, tradingDesk, "Main", 10);
+
+            // Bonds Overview Report: 
+            DataTable bondsOverview = instance.LoadBondsOverviewReport(refDate, tradingDesk);
+
+            // Futures Unrealized P & L: 
+            DataTable futuresUnrealized = instance.LoadFuturesUnrealizedPL(refDate, tradingDesk);
+
+            // P & L Resume: 
+            DataTable plResume = instance.LoadPLResume(tradingDesk, refDate);
+
+            // AllTradingDesksHistoricalNAVandShares: 
+            DateTime startDate = new DateTime(2021, 05, 01);
+            DateTime endDate = new DateTime(2021, 06, 01);
+            DataTable allTradingDeskNAVandShares = instance.LoadAllTradingDesksNAVAndShareHist(startDate, endDate);
+
+            // Books Overview Report: 
+            DataTable booksOverview = instance.LoadBooksOverviewReport(refDate, tradingDesk, "Main", 10);
+
+            // Overview With Books And Dealer / Overview With Books And Settle Dealer: 
+            DataTable overviewWithBooksAndDealer = instance.LoadOverviewWithBooksAndDealers(refDate, tradingDesk);
+
+            // Books Products Buckets Risk Report: 
+            DataTable booksProductsBuckets = instance.LoadBooksProductsBucketsRiskReport(refDate, tradingDesk, "Main", 10);
+
+            // risk values: method #1
+            string[] books = instance.Books(tradingDesk, refDate);
+            double[] brlBuckets = new double[] { 1, 30, 60, 90, 180, 270, 360, 540, 720, 900, 1080, 1440, 1800, 2160, 2520, 2880, 3240, 3600, 3960, 4320, 4680, 5040, 5400, 7200, 9000, 10800, 12600, 14400, 16200, 18000 };
+            double[] brdBuckets = new double[] { 1, 30, 60, 90, 180, 270, 360, 540, 720, 900, 1080, 1440, 1800, 2160, 2520, 2880, 3240, 3600, 3960, 4320, 4680, 5040, 5400, 7200, 9000, 10800, 12600, 14400, 16200, 18000 };
+
+            instance.LoadRiskDataContainer(tradingDesk, books, refDate, false, false, false, false, false, true, false, 140, 99d, 0.95d, false, false, false, brlBuckets, false, brdBuckets, false, true, false, false, true);
+
+            double nav = instance.NAV;
+            double share = instance.NAVShare;
+            double hVaR1D = instance.HistoricalVAR_1;
+            double hVaR5D = instance.HistoricalVAR_5;
+            double pVaR1D = instance.ParametricVAR_1;
+            double pVaR5D = instance.ParametricVAR_5;
+            double stress = instance.Stress;
+
+            // risk values: method #2
+            int bookLevel = 10;
+            string mainReport = "Main";
+            double histVaR1D;
+            double histVaR5D;
+            double parVaR1D;
+            double parVaR5D;
+            double stress2;
+
+            /*
+             * Alguns métodos necessitam que o InitializeTradingRiskInformation seja executado antes,
+             * para uma melhor performance recomenda-se executá-lo uma única vez por fundo e data e depois
+             * chamar todos os métodos dependentes com a mesma instância.
+             * Ao trocar de fundo ou data o método deve ser executado novamente
+            */
+
+            instance.InitializeTradingRiskInformation(tradingDesk, refDate);
+            instance.Calc1DayVaR(tradingDesk, refDate, bookLevel, mainReport, books, out histVaR1D, out parVaR1D);
+            instance.Calc5DayVaR(tradingDesk, refDate, bookLevel, mainReport, books, out histVaR5D, out parVaR5D);
+            instance.CalcStress(tradingDesk, refDate, bookLevel, mainReport, books, out stress2);
+
+            // Overview By VaR Primitive And Dealer: 
+            DataTable overviewVarPrimAndDealer = instance.CalcOverviewByVaRPrimitiveAndDealerReport(tradingDesk, refDate);
+
+            // VaR & Stress: 
+            DataTable varStress = instance.CalcVaRStressReport(tradingDesk, refDate);
+
+            // 1 Day Primitives Covariance: 
+            DataTable covariance1Day = instance.Calc1DayCovarianceTable(tradingDesk, refDate, 10, "Main", books, false);
+
+            // 1 Day Full Hist VaR: 
+            DataTable fullHistVaR1Day = instance.Calc1DayFullHistVaRTable(tradingDesk, refDate, 10, "Main", books);
+
+            // Parametric VaR: 
+            DataTable parametricVaR = instance.Calc1DayParametricVaRReport(tradingDesk, refDate);
+
+            // Products Parametric VaR: 
+            DataTable productsParametricVaR = instance.CalcProductsParametricVaRReport(tradingDesk, refDate);
+
+            // Books VaR &Stress: 
+            DataTable varStressReport = instance.CalcBooksVaRStressReport(tradingDesk, refDate, 10, "Main");
+
+            // Books Parametric VaR: 
+            DataTable books1DayParametricVaR = instance.Calc1DayBooksParametricVaRReport(tradingDesk, refDate, 10, "Main");
+
+            // Books Primitive VaR: 
+            DataTable booksPrimitivesVaR = instance.CalcBooksPrimitivesVaRReport(tradingDesk, refDate, 10, "Main");
+
+            // Books Primitives Stress Report: 
+            DataTable booksPrimitivesStress = instance.CalcBooksPrimitivesStressReport(tradingDesk, refDate, 10, "Main");
+
+            RiskFactory.ReleaseRisk(ref instance);
+        }
+    }
+}
